@@ -1,7 +1,7 @@
 package GoEndpointManager
 import (
 	"errors"
-	"sync"
+	// "sync"
 )
 
 var (

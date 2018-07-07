@@ -52,7 +52,11 @@ func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, 
 		if (gerr == nil){
 			for _, kv := range resp.Kvs {
 				if string (kv.Key) == serviceID {
-					o.parseServiceFromString(serviceID, string(kv.Value))
+					Eps := o.parseServiceFromString(serviceID, string(kv.Value))
+					if len(Eps) > 0 {
+						host, port, err = Eps[0].Host, Eps[0].Port, nil
+						return
+					}
 				}
 			}
 
@@ -122,7 +126,7 @@ func (o *EtcdEndpointManager) Start() bool {
 	return true
 }
 
-func (o *EtcdEndpointManager) parseServiceFromString(serviceID, val string) {
+func (o *EtcdEndpointManager) parseServiceFromString(serviceID, val string) []*Endpoint {
 	HostPorts := strings.Split(val,",");
 	var Eps []*Endpoint 
 	for _, HostPort:= range HostPorts {
@@ -134,6 +138,7 @@ func (o *EtcdEndpointManager) parseServiceFromString(serviceID, val string) {
 		}
 	}
 	o.EndpointsMap.Store(serviceID, Eps)
+	return Eps
 }
 
 //MonitorChan monitor an etcd watcher channel
