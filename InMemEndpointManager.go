@@ -1,5 +1,8 @@
 package GoEndpointManager
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 var (
 	//ErrNotSetDefautEndpoint not set default enpoints
@@ -16,9 +19,9 @@ type InMemEndpointManager struct {
 }
 
 //GetEndpoint get endpoint by service id
-func (this *InMemEndpointManager) GetEndpoint(serviceID string) (host, port string, err error){
+func (o *InMemEndpointManager) GetEndpoint(serviceID string) (host, port string, err error){
 
-	ep := this.defaultEndpoints[serviceID]
+	ep := o.defaultEndpoints[serviceID]
 	if ep != nil {
 		host = ep.Host
 		port = ep.Port
@@ -29,8 +32,10 @@ func (this *InMemEndpointManager) GetEndpoint(serviceID string) (host, port stri
 	return
 }
 
-///SetDefaultEntpoint set endpoint of service by id
-func (this *InMemEndpointManager)SetDefaultEntpoint(serviceID, host, port string) (err error) {
-	this.defaultEndpoints[serviceID] = &Endpoint{host, port}
+//SetDefaultEntpoint set endpoint of service by id
+func (o *InMemEndpointManager)SetDefaultEntpoint(serviceID, host, port string) (err error) {
+	o.defaultEndpoints[serviceID] = &Endpoint{host, port}
 	return
 }
+
+
