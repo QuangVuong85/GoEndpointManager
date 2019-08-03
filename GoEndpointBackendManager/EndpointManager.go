@@ -3,7 +3,6 @@ package GoEndpointBackendManager
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -11,17 +10,40 @@ import (
 	"sync"
 	"time"
 
-	etcdclient "go.etcd.io/etcd/client"
+	etcdv3 "go.etcd.io/etcd/clientv3"
 )
 
-type FncProcessEventChange func(ep *EndPoint)
-
+// Quan ly cac endpoint dua tren 1 duong dan goc
+// etcdServer dia chi cua ectdserver (vi du : http://127.0.0.1:2379)
+// etcClient etcd client dung de call toi etcd server
 type EndPointManager struct {
-	mux          sync.Mutex
-	etcdServer   string
+	mux sync.Mutex
+	// etcdServer   string
 	etcdBasePath string
 	endPoints    []*EndPoint
-	etcdApi      etcdclient.KeysAPI
+	// etcdApi      etcdclient.KeysAPI
+	etcdClient      *etcdv3.Client
+	etcdEnpoints    []string
+	defaultEnpoints sync.Map
+}
+
+func (e *EndPointManager) SetDefaultEnpoint(ServiceID string, host string, port int, epType TType) {
+	ep := &EndPoint{
+		Host:      host,
+		Port:      port,
+		ServiceID: ServiceID + "/" + epType.String() + ":" + host + ":" + strconv.Itoa(port),
+		Type:      epType,
+	}
+	e.defaultEnpoints.Store(ServiceID+"/"+epType.String(), ep)
+}
+
+func (e *EndPointManager) GetDefaultEndpoint(ServiceID string, epType TType) (*EndPoint, error) {
+	val, ok := e.defaultEnpoints.Load(ServiceID + "/" + epType.String())
+	if !ok {
+		return nil, errors.New("Can not find enpoint")
+	}
+	ep := val.(*EndPoint)
+	return ep, nil
 }
 
 // GetEndPoint get random endpoint from endpoints
@@ -50,43 +72,40 @@ func (e *EndPointManager) GetEndPointType(t TType) (error, *EndPoint) {
 }
 
 // LoadEndpoint load all endpoint from etcd and base path
-func (e *EndPointManager) LoadEndpoint() error {
+func (e *EndPointManager) LoadEndpoints() error {
 
-	log.Println("Load endpoint from", e.etcdServer, "with base path", e.etcdBasePath)
+	log.Println("Load endpoint from", e.etcdEnpoints, "with base path", e.etcdBasePath)
 
 	return e.doLoadEndpoint()
 }
 
 func (e *EndPointManager) LoadEndPointFromServer(etcdServer, basePath string) error {
-	e.etcdServer = etcdServer
+	// e.etcdServer = etcdServer
 	e.etcdBasePath = basePath
 	return e.doLoadEndpoint()
 }
 
 func (e *EndPointManager) doLoadEndpoint() error {
-	cfg := etcdclient.Config{
-		Endpoints:               []string{e.etcdServer},
-		Transport:               etcdclient.DefaultTransport,
-		HeaderTimeoutPerRequest: time.Second,
+	cfgv3 := etcdv3.Config{
+		Endpoints:   e.etcdEnpoints,
+		DialTimeout: 5 * time.Second,
 	}
-	c, err := etcdclient.New(cfg)
+	aClient, err := etcdv3.New(cfgv3)
 	if err != nil {
 		return err
 	}
-	if c == nil {
-		return errors.New("Can not connect to etcd")
-	}
-	e.etcdApi = etcdclient.NewKeysAPI(c)
-	rs, err := e.etcdApi.Get(context.Background(), e.etcdBasePath, nil)
+	e.etcdClient = aClient
+	opts := []etcdv3.OpOption{etcdv3.WithPrefix()}
+	res, err := aClient.Get(context.Background(), e.etcdBasePath, opts...)
 	if err != nil {
 		return err
 	}
-	var listEp []*EndPoint
-	for i := 0; i < rs.Node.Nodes.Len(); i++ {
-		epPath := rs.Node.Nodes[i].Key
-		epValue := rs.Node.Nodes[i].Value
 
-		fmt.Println("enpoint path key :", epPath, "enpoint value :", epValue)
+	var listEp []*EndPoint
+	for _, kv := range res.Kvs {
+		epPath := string(kv.Key)
+		epValue := string(kv.Value)
+		log.Println("enpoint path key :", epPath, "enpoint value :", epValue)
 		err, ep := e.parseEndpoint(epPath)
 		if err != nil {
 			log.Println(err.Error())
@@ -94,12 +113,11 @@ func (e *EndPointManager) doLoadEndpoint() error {
 			listEp = append(listEp, ep)
 		}
 	}
-
 	if len(listEp) > 0 {
 		e.replaceAll(listEp)
 	}
-
 	return nil
+
 }
 
 func (e *EndPointManager) parseEndpoint(endPointPath string) (error, *EndPoint) {
@@ -120,7 +138,7 @@ func (e *EndPointManager) parseEndpoint(endPointPath string) (error, *EndPoint) 
 	ep.Type = StringToTType(token[0])
 	ep.Host = token[1]
 	ep.Port = port
-	ep.EnpointFullPath = endPointPath
+	ep.ServiceID = endPointPath
 	return nil, &ep
 }
 
@@ -140,43 +158,30 @@ func (e *EndPointManager) replaceAll(listEndPoints []*EndPoint) {
 }
 
 func (e *EndPointManager) EventChangeEndPoints(fn FncProcessEventChange) {
-	watch := e.etcdApi.Watcher(e.etcdBasePath, &etcdclient.WatcherOptions{AfterIndex: 0, Recursive: true})
-	go func() {
-		for {
-			res, err := watch.Next(context.Background())
-			if err != nil {
-				return
+	if e.etcdClient == nil {
+		return
+	}
+	opts := []etcdv3.OpOption{etcdv3.WithPrefix()}
+	watchChan := e.etcdClient.Watch(context.Background(), e.etcdBasePath, opts...)
+	for wresp := range watchChan {
+		for _, ev := range wresp.Events {
+			if ev.Type == etcdv3.EventTypePut {
+				// log.Println("co su kien thay doi ", e.etcdBasePath)
+				err, ep := e.parseEndpoint(string(ev.Kv.Key))
+				if err != nil {
+					log.Println(err.Error())
+					continue
+				}
+				fn(ep)
 			}
-			err, ep := e.parseEndpoint(res.Node.Key)
-			if err != nil {
-				continue
-			}
-			fn(ep)
 		}
-	}()
+	}
 
 }
 
-func (e *EndPointManager) TestConnectEtcdServer() error {
-	cfg := etcdclient.Config{
-		Endpoints:               []string{e.etcdServer},
-		Transport:               etcdclient.DefaultTransport,
-		HeaderTimeoutPerRequest: time.Second,
-	}
-	c, err := etcdclient.New(cfg)
-	if err != nil {
-		return err
-	}
-	if c == nil {
-		return errors.New("Can not connect to etcd")
-	}
-	e.etcdApi = etcdclient.NewKeysAPI(c)
-	return nil
-}
-
-func NewEndPointManager(aServer, aPath string) *EndPointManager {
+func NewEndPointManager(aEndpoints []string, ServiceID string) EndPointManagerIf {
 	return &EndPointManager{
-		etcdServer:   aServer,
-		etcdBasePath: aPath,
+		etcdEnpoints: aEndpoints,
+		etcdBasePath: ServiceID,
 	}
 }

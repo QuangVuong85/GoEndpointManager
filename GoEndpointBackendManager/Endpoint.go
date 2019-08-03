@@ -48,10 +48,10 @@ func StringToTType(t string) TType {
 }
 
 type EndPoint struct {
-	Host            string
-	Port            int
-	Type            TType
-	EnpointFullPath string
+	Host      string
+	Port      int
+	Type      TType
+	ServiceID string
 }
 
 func (e *EndPoint) IsGoodEndpoint() bool {
