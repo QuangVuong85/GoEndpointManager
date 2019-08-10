@@ -4,7 +4,7 @@ type FncProcessEventChange func(ep *EndPoint)
 
 type EndPointManagerIf interface {
 	// dat cau hinh enpoint trong ram trong truong hop khong ket noi toi etcdserver
-	SetDefaultEnpoint(serviceID, host string, port int, epType TType)
+	SetDefaultEnpoint(serviceID, host string, port string, epType TType)
 	// lay cau hinh enpoind trong ram trong truong hop khong ket noi to etcdserver
 	GetDefaultEndpoint(ServiceID string, epType TType) (*EndPoint, error)
 	// Load danh sach endpoint tu etcdserver dua tren basepath

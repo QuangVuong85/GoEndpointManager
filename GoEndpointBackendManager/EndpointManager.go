@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"math/rand"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,11 +26,11 @@ type EndPointManager struct {
 	defaultEnpoints sync.Map
 }
 
-func (e *EndPointManager) SetDefaultEnpoint(ServiceID string, host string, port int, epType TType) {
+func (e *EndPointManager) SetDefaultEnpoint(ServiceID string, host string, port string, epType TType) {
 	ep := &EndPoint{
 		Host:      host,
 		Port:      port,
-		ServiceID: ServiceID + "/" + epType.String() + ":" + host + ":" + strconv.Itoa(port),
+		ServiceID: ServiceID + "/" + epType.String() + ":" + host + ":" + port,
 		Type:      epType,
 	}
 	e.defaultEnpoints.Store(ServiceID+"/"+epType.String(), ep)
@@ -64,7 +63,7 @@ func (e *EndPointManager) GetEndPoints() (error, []*EndPoint) {
 
 func (e *EndPointManager) GetEndPointType(t TType) (error, *EndPoint) {
 	for i := 0; i < len(e.endPoints); i++ {
-		if e.endPoints[i].Type == t {
+		if e.endPoints[i].Type == t && e.endPoints[i].IsGoodEndpoint() {
 			return nil, e.endPoints[i]
 		}
 	}
@@ -88,15 +87,18 @@ func (e *EndPointManager) LoadEndPointFromServer(etcdServer, basePath string) er
 func (e *EndPointManager) doLoadEndpoint() error {
 	cfgv3 := etcdv3.Config{
 		Endpoints:   e.etcdEnpoints,
-		DialTimeout: 5 * time.Second,
+		DialTimeout: 2 * time.Second,
 	}
 	aClient, err := etcdv3.New(cfgv3)
 	if err != nil {
 		return err
 	}
+
 	e.etcdClient = aClient
 	opts := []etcdv3.OpOption{etcdv3.WithPrefix()}
-	res, err := aClient.Get(context.Background(), e.etcdBasePath, opts...)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	res, err := aClient.Get(ctx, e.etcdBasePath, opts...)
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -131,10 +133,8 @@ func (e *EndPointManager) parseEndpoint(endPointPath string) (error, *EndPoint) 
 	if len(token) != 3 {
 		return errors.New("Parse endpoint error " + nodeName), nil
 	}
-	port, err := strconv.Atoi(token[2])
-	if err != nil {
-		return errors.New("Parse endpoint error " + nodeName), nil
-	}
+	port := token[2]
+
 	ep.Type = StringToTType(token[0])
 	ep.Host = token[1]
 	ep.Port = port

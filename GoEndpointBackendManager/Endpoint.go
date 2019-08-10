@@ -1,5 +1,10 @@
 package GoEndpointBackendManager
 
+import (
+	"net"
+	"time"
+)
+
 type TType int
 
 const (
@@ -49,16 +54,21 @@ func StringToTType(t string) TType {
 
 type EndPoint struct {
 	Host      string
-	Port      int
+	Port      string
 	Type      TType
 	ServiceID string
 }
 
 func (e *EndPoint) IsGoodEndpoint() bool {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(e.Host, e.Port), 5*time.Second)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
 	return true
 }
 
-func NewEndPoint(aHost string, aPort int, aType TType) *EndPoint {
+func NewEndPoint(aHost string, aPort string, aType TType) *EndPoint {
 	return &EndPoint{
 		Host: aHost,
 		Port: aPort,
