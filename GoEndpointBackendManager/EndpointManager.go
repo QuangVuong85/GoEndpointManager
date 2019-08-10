@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -47,10 +46,15 @@ func (e *EndPointManager) GetDefaultEndpoint(ServiceID string, epType TType) (*E
 
 // GetEndPoint get random endpoint from endpoints
 func (e *EndPointManager) GetEndPoint() (error, *EndPoint) {
-	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s)
-	index := r.Intn(len(e.endPoints))
-	return nil, e.endPoints[index]
+	if e.endPoints != nil && len(e.endPoints) == 0 {
+		return errors.New("Not found any endpoint with serviceid " + e.etcdBasePath), nil
+	}
+	for i := 0; i < len(e.endPoints); i++ {
+		if e.endPoints[i].IsGoodEndpoint() {
+			return nil, e.endPoints[i]
+		}
+	}
+	return errors.New("Not found any endpoint is running"), nil
 }
 
 // GetEndPoints get all endpoint from etcd and base path
@@ -172,6 +176,9 @@ func (e *EndPointManager) EventChangeEndPoints(fn FncProcessEventChange) {
 					log.Println(err.Error())
 					continue
 				}
+				if !ep.IsGoodEndpoint() {
+					continue
+				}
 				fn(ep)
 			}
 		}
@@ -180,8 +187,10 @@ func (e *EndPointManager) EventChangeEndPoints(fn FncProcessEventChange) {
 }
 
 func NewEndPointManager(aEndpoints []string, ServiceID string) EndPointManagerIf {
-	return &EndPointManager{
+	epm := &EndPointManager{
 		etcdEnpoints: aEndpoints,
 		etcdBasePath: ServiceID,
 	}
+	epm.LoadEndpoints()
+	return epm
 }

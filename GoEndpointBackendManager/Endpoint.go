@@ -52,6 +52,16 @@ func StringToTType(t string) TType {
 	}
 }
 
+func ParseProtocol(name string) TType {
+	switch name {
+	case "binary":
+		return EThriftBinary
+	case "compact":
+		return EThriftCompact
+	}
+	return Eunknown
+}
+
 type EndPoint struct {
 	Host      string
 	Port      string
