@@ -77,7 +77,7 @@ func (e *EndPointManager) GetEndPointType(t TType) (error, *EndPoint) {
 // LoadEndpoint load all endpoint from etcd and base path
 func (e *EndPointManager) LoadEndpoints() error {
 
-	log.Println("Load endpoint from", e.etcdEnpoints, "with base path", e.etcdBasePath)
+	// log.Println("Load endpoint from", e.etcdEnpoints, "with base path", e.etcdBasePath)
 
 	return e.doLoadEndpoint()
 }
@@ -110,8 +110,8 @@ func (e *EndPointManager) doLoadEndpoint() error {
 	var listEp []*EndPoint
 	for _, kv := range res.Kvs {
 		epPath := string(kv.Key)
-		epValue := string(kv.Value)
-		log.Println("enpoint path key :", epPath, "enpoint value :", epValue)
+		// epValue := string(kv.Value)
+		// log.Println("enpoint path key :", epPath, "enpoint value :", epValue)
 		err, ep := e.parseEndpoint(epPath)
 		if err != nil {
 			log.Println(err.Error())
