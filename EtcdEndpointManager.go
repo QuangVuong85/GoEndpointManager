@@ -13,7 +13,7 @@ import (
 // 	SetDefaultEntpoint(serviceID, host, port string) (err error)
 // }
 
-//EtcdEnpointManager
+//EtcdEnpointManager Endpoint manager for backend service using etcd
 type EtcdEndpointManager struct {
 	InMemEndpointManager
 	EtcdEndpoints []string
@@ -43,12 +43,17 @@ func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, 
 			host, port = arr[iPos].Host, arr[iPos].Port;
 			err = nil
 			return
-		} else {
-			return o.InMemEndpointManager.GetEndpoint(serviceID)
-		}
-	} else { 
+		} 
+		return o.InMemEndpointManager.GetEndpoint(serviceID)
+		
+	}
+
+	if (o.client != nil) {
 		// try to get from etcd
 		resp, gerr := o.client.Get(context.Background(), serviceID);
+		ch := o.client.Watch(context.Background(), serviceID, nil...)
+		go o.MonitorChan(ch)
+		
 		if (gerr == nil){
 			for _, kv := range resp.Kvs {
 				if string (kv.Key) == serviceID {
@@ -60,12 +65,12 @@ func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, 
 				}
 			}
 
-		} else {
-			//Get from default endpoint
-			return o.InMemEndpointManager.GetEndpoint(serviceID)
-		}
+		} 
 	}
-	return 
+
+	//Get from default endpoint
+	return o.InMemEndpointManager.GetEndpoint(serviceID)
+ 
 }
 
 //SetDefaultEntpoint Set default endpoint manager
@@ -99,6 +104,10 @@ func NewEtcdEndpointManager( etcdConfigHostports []string ) *EtcdEndpointManager
 
 func (o *EtcdEndpointManager) Start() bool {
 	if o.client != nil {
+		return false
+	}
+
+	if len(o.EtcdEndpoints) == 0{
 		return false
 	}
 
