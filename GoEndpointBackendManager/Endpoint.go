@@ -1,21 +1,9 @@
-package GoEndpointManager
+package GoEndpointBackendManager
 
 import (
-	"errors"
-	// "sync"
 	"net"
 	"time"
 )
-
-var (
-	//ErrNotSetDefautEndpoint not set default enpoints
-	ErrNotSetDefautEndpoint = errors.New("Not set default endpoint")
-)
-
-// type  Endpoint struct{
-// 	Host string
-// 	Port string
-// }
 
 type TType int
 
@@ -74,14 +62,14 @@ func ParseProtocol(name string) TType {
 	return Eunknown
 }
 
-type Endpoint struct {
+type EndPoint struct {
 	Host      string
 	Port      string
 	Type      TType
 	ServiceID string
 }
 
-func (e *Endpoint) IsGoodEndpoint() bool {
+func (e *EndPoint) IsGoodEndpoint() bool {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(e.Host, e.Port), 5*time.Second)
 	if err != nil {
 		return false
@@ -90,35 +78,10 @@ func (e *Endpoint) IsGoodEndpoint() bool {
 	return true
 }
 
-func NewEndPoint(aHost string, aPort string, aType TType) *Endpoint {
-	return &Endpoint{
+func NewEndPoint(aHost string, aPort string, aType TType) *EndPoint {
+	return &EndPoint{
 		Host: aHost,
 		Port: aPort,
 		Type: aType,
 	}
-}
-
-//EnpointManagerIf
-type InMemEndpointManager struct {
-	defaultEndpoints map[string]*Endpoint
-}
-
-//GetEndpoint get endpoint by service id
-func (o *InMemEndpointManager) GetEndpoint(serviceID string) (host, port string, err error) {
-
-	ep := o.defaultEndpoints[serviceID]
-	if ep != nil {
-		host = ep.Host
-		port = ep.Port
-		err = nil
-		return
-	}
-	err = ErrNotSetDefautEndpoint
-	return
-}
-
-//SetDefaultEntpoint set endpoint of service by id
-func (o *InMemEndpointManager) SetDefaultEntpoint(serviceID, host, port string) (err error) {
-	o.defaultEndpoints[serviceID] = &Endpoint{host, port, 0, ""}
-	return
 }
