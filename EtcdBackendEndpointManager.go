@@ -50,31 +50,7 @@ func (e *EtcdBackendEndpointManager) parseEndpointFromPath(endPointPath string) 
 	return nil, &ep, serviceID
 }
 
-//GetEndpoint (serviceID string) (host, port string, err error)
-func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port string, err error) {
-	if o.client == nil {
-		o.Start()
-	}
-	/*
-		Get in Endpoint map first
-		If it does not exist, get from etcd, and monitor it.
-	*/
-	endpoints, ok := o.EndpointsMap.Load(serviceID)
-	rotated, _ := o.EndpointRotating.LoadOrStore(serviceID, 0)
-	o.EndpointRotating.Store(serviceID, rotated.(int)+1)
-	if ok {
-		fmt.Println("get from store")
-		arr := endpoints.([]*Endpoint)
-		if len(arr) > 0 {
-			iPos := rotated.(int) % len(arr)
-			host, port = arr[iPos].Host, arr[iPos].Port
-			err = nil
-			return
-		}
-		return o.InMemEndpointManager.GetEndpoint(serviceID)
-
-	}
-
+func (o *EtcdBackendEndpointManager) getFromEtcd(serviceID string) (host, port string, err error) {
 	if o.client != nil {
 		// try to get from etcd
 		// resp, gerr := o.client.Get(context.Background(), serviceID)
@@ -110,20 +86,66 @@ func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port s
 
 		}
 
-		// ch := o.client.Watch(context.Background(), serviceID, nil...)
-		// go o.MonitorChan(ch)
+	}
 
-		if gerr == nil {
-		} else {
-			return o.InMemEndpointManager.GetEndpoint(serviceID)
+	return "", "", nil
+}
+
+//GetEndpoint (serviceID string) (host, port string, err error)
+func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port string, err error) {
+	if o.client == nil {
+		o.Start()
+	}
+	/*
+		Get in Endpoint map first
+		If it does not exist, get from etcd, and monitor it.
+	*/
+	endpoints, ok := o.EndpointsMap.Load(serviceID)
+	rotated, _ := o.EndpointRotating.LoadOrStore(serviceID, 0)
+	o.EndpointRotating.Store(serviceID, rotated.(int)+1)
+	if ok {
+		fmt.Println("get from store")
+		arr := endpoints.([]*Endpoint)
+		if len(arr) > 0 {
+			iPos := rotated.(int) % len(arr)
+			host, port = arr[iPos].Host, arr[iPos].Port
+			err = nil
+			return
 		}
-	} else {
+		return o.InMemEndpointManager.GetEndpoint(serviceID)
 
 	}
 
 	//Get from default endpoint
 	return o.InMemEndpointManager.GetEndpoint(serviceID)
 
+}
+
+//Get all Endpoint of a serviceID
+func (o *EtcdBackendEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoint, error) {
+	if o.client == nil {
+		o.Start()
+	}
+	/*
+		Get in Endpoint map first
+		If it does not exist, get from etcd, and monitor it.
+	*/
+	endpoints, ok := o.EndpointsMap.Load(serviceID)
+	if ok {
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+
+	} else {
+		o.getFromEtcd(serviceID)
+		endpoints, ok = o.EndpointsMap.Load(serviceID)
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+	}
+	return o.InMemEndpointManager.GetAllEndpoint(serviceID)
 }
 
 //SetDefaultEntpoint Set default endpoint manager

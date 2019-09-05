@@ -122,3 +122,10 @@ func (o *InMemEndpointManager) SetDefaultEntpoint(serviceID, host, port string) 
 	o.defaultEndpoints[serviceID] = &Endpoint{host, port, 0, ""}
 	return
 }
+
+func (o *InMemEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoint, error) {
+	if o.defaultEndpoints[serviceID] != nil {
+		return []*Endpoint{o.defaultEndpoints[serviceID]}, nil
+	}
+	return nil, errors.New("Service id not existed")
+}

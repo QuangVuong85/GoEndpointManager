@@ -15,6 +15,7 @@ import (
 func main() {
 	Mngr := GoEndpointManager.NewEtcdBackendEndpointManager([]string{"127.0.0.1:2379"})
 	Mngr.SetDefaultEntpoint("/services/bigset/stringbigset", "127.0.0.1", "5656")
+	fmt.Println(Mngr.GetAllEndpoint("/services/bigset/stringbigset"))
 	Mngr.Start()
 	for {
 		h, p, _ := Mngr.GetEndpoint("/services/bigset/stringbigset")

@@ -26,6 +26,29 @@ type EtcdEndpointManager struct {
 	EndpointRotating sync.Map // map from serviceID to int
 }
 
+func (o *EtcdEndpointManager) getFromEtcd(serviceID string) (host, port string, err error) {
+	if o.client != nil {
+		// try to get from etcd
+		// resp, gerr := o.client.Get(context.Background(), serviceID)
+		resp, gerr := o.client.Get(context.Background(), serviceID)
+		if gerr == nil {
+			for _, kv := range resp.Kvs {
+				if string(kv.Key) == serviceID {
+					Eps := o.parseServiceFromString(serviceID, string(kv.Value))
+					if len(Eps) > 0 {
+						host, port, err = Eps[0].Host, Eps[0].Port, nil
+						return
+					}
+				}
+			}
+
+		}
+		ch := o.client.Watch(context.Background(), serviceID, nil...)
+		go o.MonitorChan(ch)
+	}
+	return "", "", nil
+}
+
 //GetEndpoint (serviceID string) (host, port string, err error)
 func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, err error) {
 	if o.client == nil {
@@ -50,36 +73,65 @@ func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, 
 
 	}
 
-	if o.client != nil {
-		// try to get from etcd
-		// resp, gerr := o.client.Get(context.Background(), serviceID)
-		resp, gerr := o.client.Get(context.Background(), serviceID)
-		if gerr == nil {
-			for _, kv := range resp.Kvs {
-				if string(kv.Key) == serviceID {
-					Eps := o.parseServiceFromString(serviceID, string(kv.Value))
-					if len(Eps) > 0 {
-						host, port, err = Eps[0].Host, Eps[0].Port, nil
-						return
-					}
-				}
-			}
-
-		}
-		ch := o.client.Watch(context.Background(), serviceID, nil...)
-		go o.MonitorChan(ch)
-
-		if gerr == nil {
-		} else {
-			return o.InMemEndpointManager.GetEndpoint(serviceID)
-		}
-	} else {
-
+	host, port, err = o.getFromEtcd(serviceID)
+	if host != "" {
+		return
 	}
+	// if o.client != nil {
+	// 	// try to get from etcd
+	// 	// resp, gerr := o.client.Get(context.Background(), serviceID)
+	// 	resp, gerr := o.client.Get(context.Background(), serviceID)
+	// 	if gerr == nil {
+	// 		for _, kv := range resp.Kvs {
+	// 			if string(kv.Key) == serviceID {
+	// 				Eps := o.parseServiceFromString(serviceID, string(kv.Value))
+	// 				if len(Eps) > 0 {
+	// 					host, port, err = Eps[0].Host, Eps[0].Port, nil
+	// 					return
+	// 				}
+	// 			}
+	// 		}
+
+	// 	}
+	// 	ch := o.client.Watch(context.Background(), serviceID, nil...)
+	// 	go o.MonitorChan(ch)
+
+	// 	if gerr == nil {
+	// 	} else {
+	// 		return o.InMemEndpointManager.GetEndpoint(serviceID)
+	// 	}
+	// }
 
 	//Get from default endpoint
 	return o.InMemEndpointManager.GetEndpoint(serviceID)
 
+}
+
+//Get all Endpoint of a serviceID
+func (o *EtcdEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoint, error) {
+	if o.client == nil {
+		o.Start()
+	}
+	/*
+		Get in Endpoint map first
+		If it does not exist, get from etcd, and monitor it.
+	*/
+	endpoints, ok := o.EndpointsMap.Load(serviceID)
+	if ok {
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+
+	} else {
+		o.getFromEtcd(serviceID)
+		endpoints, ok = o.EndpointsMap.Load(serviceID)
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+	}
+	return o.InMemEndpointManager.GetAllEndpoint(serviceID)
 }
 
 //SetDefaultEntpoint Set default endpoint manager
