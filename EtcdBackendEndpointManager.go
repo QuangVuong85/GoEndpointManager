@@ -93,6 +93,7 @@ func (o *EtcdBackendEndpointManager) getFromEtcd(serviceID string) (host, port s
 
 //GetEndpoint (serviceID string) (host, port string, err error)
 func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port string, err error) {
+
 	if o.client == nil {
 		o.Start()
 	}
@@ -150,6 +151,7 @@ func (o *EtcdBackendEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoi
 
 //SetDefaultEntpoint Set default endpoint manager
 func (o *EtcdBackendEndpointManager) SetDefaultEntpoint(serviceID, host, port string) (err error) {
+	fmt.Println("EtcdBackendEndpointManager SetDefaultEndpoint ", serviceID, host, port)
 	o.InMemEndpointManager.SetDefaultEntpoint(serviceID, host, port)
 
 	if o.client != nil {
@@ -175,6 +177,7 @@ func NewEtcdBackendEndpointManager(etcdConfigHostports []string) *EtcdBackendEnd
 }
 
 func (o *EtcdBackendEndpointManager) Start() bool {
+	fmt.Println("Starting Backend Endpoint manager etcd  ", o.EtcdEndpoints)
 	if o.client != nil {
 		return false
 	}
@@ -200,8 +203,10 @@ func (o *EtcdBackendEndpointManager) Start() bool {
 	}
 
 	for serviceID := range o.defaultEndpoints {
+		fmt.Println("Start Watching ", serviceID)
 		serviceChan := aClient.Watch(context.Background(), serviceID, opts...)
 		go o.MonitorChan(serviceChan)
+		go o.getFromEtcd(serviceID)
 	}
 
 	return true
