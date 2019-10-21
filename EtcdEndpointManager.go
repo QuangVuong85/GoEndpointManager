@@ -2,6 +2,7 @@ package GoEndpointManager
 
 import (
 	"strings"
+
 	// etcdv3 "github.com/coreos/etcd/clientv3"
 	"context"
 	"sync"
@@ -50,7 +51,9 @@ func (o *EtcdEndpointManager) GetEndpoint(serviceID string) (host, port string, 
 		}
 	} else {
 		// try to get from etcd
+
 		resp, gerr := o.client.Get(context.Background(), serviceID)
+
 		if gerr == nil {
 			for _, kv := range resp.Kvs {
 				if string(kv.Key) == serviceID {

@@ -91,7 +91,7 @@ func (e *EndPointManager) LoadEndPointFromServer(etcdServer, basePath string) er
 func (e *EndPointManager) doLoadEndpoint() error {
 	cfgv3 := etcdv3.Config{
 		Endpoints:   e.etcdEnpoints,
-		DialTimeout: 2 * time.Second,
+		DialTimeout: 5 * time.Second,
 	}
 	aClient, err := etcdv3.New(cfgv3)
 	if err != nil {
@@ -191,6 +191,9 @@ func NewEndPointManager(aEndpoints []string, ServiceID string) EndPointManagerIf
 		etcdEnpoints: aEndpoints,
 		etcdBasePath: ServiceID,
 	}
-	epm.LoadEndpoints()
+	err := epm.LoadEndpoints()
+	if err != nil {
+		log.Println("New endpoint manager of service:", ServiceID, "err", err)
+	}
 	return epm
 }
