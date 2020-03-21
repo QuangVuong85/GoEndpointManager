@@ -88,20 +88,44 @@ func (e *EndPointManager) LoadEndPointFromServer(etcdServer, basePath string) er
 	return e.doLoadEndpoint()
 }
 
-func (e *EndPointManager) doLoadEndpoint() error {
+type etcdClient struct {
+	endpoints []string
+	client    *etcdv3.Client
+}
+
+var etcdclient *etcdClient
+
+func GetEtcdClient(endpoints []string) (*etcdClient, error) {
+	if etcdclient != nil {
+		return etcdclient, nil
+	}
 	cfgv3 := etcdv3.Config{
-		Endpoints:   e.etcdEnpoints,
+		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
 	aClient, err := etcdv3.New(cfgv3)
 	if err != nil {
+		return nil, err
+	}
+	etcdclient = &etcdClient{
+		endpoints: endpoints,
+		client:    aClient,
+	}
+	return etcdclient, nil
+
+}
+
+func (e *EndPointManager) doLoadEndpoint() error {
+
+	aClient, err := GetEtcdClient(e.etcdEnpoints)
+	if err != nil {
 		return err
 	}
 
-	e.etcdClient = aClient
+	e.etcdClient = aClient.client
 	opts := []etcdv3.OpOption{etcdv3.WithPrefix()}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	res, err := aClient.Get(ctx, e.etcdBasePath, opts...)
+	res, err := e.etcdClient.Get(ctx, e.etcdBasePath, opts...)
 	cancel()
 	if err != nil {
 		return err
