@@ -106,7 +106,7 @@ func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port s
 	rotated, _ := o.EndpointRotating.LoadOrStore(serviceID, 0)
 	o.EndpointRotating.Store(serviceID, rotated.(int)+1)
 	if ok {
-		fmt.Println("get from store")
+		// fmt.Println("get from store")
 		arr := endpoints.([]*Endpoint)
 		if len(arr) > 0 {
 			iPos := rotated.(int) % len(arr)
@@ -151,6 +151,31 @@ func (o *EtcdBackendEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoi
 	// }
 	// return o.InMemEndpointManager.GetAllEndpoint(serviceID)
 	return nil, nil
+}
+
+func (o *EtcdBackendEndpointManager) GetAllEndPoint(serviceID string) ([]*Endpoint, error) {
+	if o.client == nil {
+		o.Start()
+	}
+	/*
+		Get in Endpoint map first
+		If it does not exist, get from etcd, and monitor it.
+	// */
+	endpoints, ok := o.EndpointsMap.Load(serviceID)
+	if ok {
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+	} else {
+		o.getFromEtcd(serviceID)
+		endpoints, ok = o.EndpointsMap.Load(serviceID)
+		eps := endpoints.([]*Endpoint)
+		if len(eps) > 0 {
+			return eps, nil
+		}
+	}
+	return o.InMemEndpointManager.GetAllEndpoint(serviceID)
 }
 
 //SetDefaultEntpoint Set default endpoint manager

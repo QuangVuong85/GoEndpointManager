@@ -2,6 +2,7 @@ package GoEndpointManager
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	etcdv3 "go.etcd.io/etcd/clientv3"
@@ -24,6 +25,7 @@ func GetEtcdBackendEndpointManagerSingleton(etcdEndpoints []string) *EtcdBackend
 		}
 		aClient, err := etcdv3.New(cfg)
 		if err != nil {
+			log.Println("Etcd client err", err)
 			etcdManagerSingleton = nil
 		}
 
