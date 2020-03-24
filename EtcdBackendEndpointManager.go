@@ -3,6 +3,7 @@ package GoEndpointManager
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -151,7 +152,7 @@ func (o *EtcdBackendEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoi
 
 //SetDefaultEntpoint Set default endpoint manager
 func (o *EtcdBackendEndpointManager) SetDefaultEntpoint(serviceID, host, port string) (err error) {
-	fmt.Println("EtcdBackendEndpointManager SetDefaultEndpoint ", serviceID, host, port)
+	log.Println("EtcdBackendEndpointManager SetDefaultEndpoint ", serviceID, host, port)
 	o.InMemEndpointManager.SetDefaultEntpoint(serviceID, host, port)
 
 	if o.client != nil {
