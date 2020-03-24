@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"log"
+	"os"
 
 	"github.com/OpenStars/GoEndpointManager"
 )
@@ -10,17 +12,34 @@ import (
 
 func main() {
 	Mngr := GoEndpointManager.NewEtcdBackendEndpointManager([]string{"10.60.1.20:2379"})
-	Mngr.GetAllEndpoint("/trustkeys/socialnetwork/followuser/stringbs")
-	// err := Mngr.SetDefaultEntpoint("/trustkeys/socialnetwork/followuser/stringbs", "10.110.69.96", "5656")
-	// if err != nil {
-	// 	log.Fatalln("err", err)
-	// }
-	host, port, err := Mngr.GetEndpoint("/trustkeys/socialnetwork/followuser/stringbs")
+	err := Mngr.SetDefaultEntpoint("/trustkeys/test/stringbigset", "127.0.0.1", "17407")
 	if err != nil {
-		log.Println("err", err)
-		return
+		log.Fatalln("err", err)
 	}
-	log.Println("host", host, "port", port)
+	for {
+		h, p, err := Mngr.GetEndpoint("/trustkeys/test/stringbigset")
+		if err != nil {
+			log.Println("err", err)
+			break
+		}
+		log.Println("address", h+":"+p)
+		reader := bufio.NewReader(os.Stdin)
+		text, _ := reader.ReadString('\n')
+		if text == "quit" {
+			break
+		}
+	}
+	// Mngr.GetAllEndpoint("/trustkeys/socialnetwork/followuser/stringbs")
+	// // err := Mngr.SetDefaultEntpoint("/trustkeys/socialnetwork/followuser/stringbs", "10.110.69.96", "5656")
+	// // if err != nil {
+	// // 	log.Fatalln("err", err)
+	// // }
+	// host, port, err := Mngr.GetEndpoint("/trustkeys/socialnetwork/followuser/stringbs")
+	// if err != nil {
+	// 	log.Println("err", err)
+	// 	return
+	// }
+	// log.Println("host", host, "port", port)
 	// lstEndPoints, err := Mngr.GetAllEndpoint("/trustkeys/socialnetwork/followuser/stringbs")
 	// if err != nil {
 	// 	log.Fatalln("err", err)
