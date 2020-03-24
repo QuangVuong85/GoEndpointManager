@@ -1,6 +1,11 @@
 package GoEndpointManager
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+
+	etcdv3 "go.etcd.io/etcd/clientv3"
+)
 
 var etcdManagerSingleton *EtcdBackendEndpointManager
 var once sync.Once
@@ -8,21 +13,21 @@ var once sync.Once
 func GetEtcdBackendEndpointManagerSingleton(etcdEndpoints []string) *EtcdBackendEndpointManager {
 	once.Do(func() {
 		etcdManagerSingleton = NewEtcdBackendEndpointManager(etcdEndpoints)
-fmt.Println("Starting Backend Endpoint manager etcd  ", o.EtcdEndpoints)
+		fmt.Println("Starting Backend Endpoint manager etcd  ", etcdEndpoints)
 
+		if len(etcdEndpoints) == 0 {
+			etcdManagerSingleton = nil
+		}
 
-	if len(o.EtcdEndpoints) == 0 {
-		etcdManagerSingleton = nil
-	}
+		cfg := etcdv3.Config{
+			Endpoints: etcdEndpoints,
+		}
+		aClient, err := etcdv3.New(cfg)
+		if err != nil {
+			etcdManagerSingleton = nil
+		}
 
-	cfg := etcdv3.Config{
-		Endpoints: o.EtcdEndpoints,
-	}
-	aClient, err := etcdv3.New(cfg)
-	if err != nil {
-		etcdManagerSingleton = nil
-	}
-	o.client = aClient
+		etcdManagerSingleton.client = aClient
 	})
 	return etcdManagerSingleton
 }
