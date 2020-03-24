@@ -125,29 +125,32 @@ func (o *EtcdBackendEndpointManager) GetEndpoint(serviceID string) (host, port s
 
 //Get all Endpoint of a serviceID
 func (o *EtcdBackendEndpointManager) GetAllEndpoint(serviceID string) ([]*Endpoint, error) {
-	if o.client == nil {
-		o.Start()
-	}
+	// Do nothing
+	// if o.client == nil {
+	// 	o.Start()
+	// }
 	/*
 		Get in Endpoint map first
 		If it does not exist, get from etcd, and monitor it.
-	*/
-	endpoints, ok := o.EndpointsMap.Load(serviceID)
-	if ok {
-		eps := endpoints.([]*Endpoint)
-		if len(eps) > 0 {
-			return eps, nil
-		}
+	// */
+	// endpoints, ok := o.EndpointsMap.Load(serviceID)
+	// if ok {
+	// 	eps := endpoints.([]*Endpoint)
+	// 	if len(eps) > 0 {
+	// 		return eps, nil
+	// 	}
+	// }
 
-	} else {
-		o.getFromEtcd(serviceID)
-		endpoints, ok = o.EndpointsMap.Load(serviceID)
-		eps := endpoints.([]*Endpoint)
-		if len(eps) > 0 {
-			return eps, nil
-		}
-	}
-	return o.InMemEndpointManager.GetAllEndpoint(serviceID)
+	// } else {
+	// 	o.getFromEtcd(serviceID)
+	// 	endpoints, ok = o.EndpointsMap.Load(serviceID)
+	// 	eps := endpoints.([]*Endpoint)
+	// 	if len(eps) > 0 {
+	// 		return eps, nil
+	// 	}
+	// }
+	// return o.InMemEndpointManager.GetAllEndpoint(serviceID)
+	return nil, nil
 }
 
 //SetDefaultEntpoint Set default endpoint manager
@@ -156,9 +159,12 @@ func (o *EtcdBackendEndpointManager) SetDefaultEntpoint(serviceID, host, port st
 	o.InMemEndpointManager.SetDefaultEntpoint(serviceID, host, port)
 
 	if o.client != nil {
-		//Already connected to etcdserver
-		o.GetEndpoint(serviceID)
+		o.getFromEtcd(serviceID)
 	}
+	// if o.client != nil {
+	// 	//Already connected to etcdserver
+	// 	o.GetEndpoint(serviceID)
+	// }
 
 	return
 }
