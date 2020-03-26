@@ -55,14 +55,15 @@ func (o *EtcdBackendEndpointManager) getFromEtcd(serviceID string) (host, port s
 	if o.client != nil {
 		// try to get from etcd
 		// resp, gerr := o.client.Get(context.Background(), serviceID)
-		fmt.Println("get from etcd ")
-		ch := o.client.Watch(context.Background(), serviceID, nil...)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ch := o.client.Watch(ctx, serviceID, nil...)
+
 		go o.MonitorChan(ch)
 
 		opts := []etcdv3.OpOption{etcdv3.WithPrefix()}
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 		resp, gerr := o.client.Get(ctx, serviceID, opts...)
-		// cancel()
+		cancel()
 		if gerr == nil {
 			var Eps []*Endpoint
 

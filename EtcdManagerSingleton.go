@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	etcdv3 "go.etcd.io/etcd/clientv3"
 )
@@ -21,7 +22,8 @@ func GetEtcdBackendEndpointManagerSingleton(etcdEndpoints []string) *EtcdBackend
 		}
 
 		cfg := etcdv3.Config{
-			Endpoints: etcdEndpoints,
+			Endpoints:   etcdEndpoints,
+			DialTimeout: 3 * time.Second,
 		}
 		aClient, err := etcdv3.New(cfg)
 		if err != nil {
