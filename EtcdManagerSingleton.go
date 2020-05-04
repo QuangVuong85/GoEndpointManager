@@ -19,6 +19,7 @@ func GetEtcdBackendEndpointManagerSingleton(etcdEndpoints []string) *EtcdBackend
 
 		if len(etcdEndpoints) == 0 {
 			etcdManagerSingleton = nil
+			return
 		}
 
 		cfg := etcdv3.Config{
