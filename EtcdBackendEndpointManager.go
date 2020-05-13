@@ -37,9 +37,11 @@ func (e *EtcdBackendEndpointManager) parseEndpointFromPath(endPointPath string) 
 	nodeName := baseNode[len(baseNode)-1] //Token cuối cùng, format schema:host:port
 	fmt.Println("node name: ", nodeName)
 	token := strings.Split(nodeName, ":")
+
 	if len(token) != 3 {
 		return errors.New("Parse endpoint error " + nodeName), nil, ""
 	}
+
 	port := token[2]
 
 	ep.Type = StringToTType(token[0])

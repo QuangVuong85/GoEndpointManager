@@ -31,7 +31,9 @@ func GetEtcdBackendEndpointManagerSingleton(etcdEndpoints []string) *EtcdBackend
 			etcdManagerSingleton = nil
 		}
 
-		etcdManagerSingleton.client = aClient
+		if etcdManagerSingleton != nil {
+			etcdManagerSingleton.client = aClient
+		}
 	})
 	return etcdManagerSingleton
 }
