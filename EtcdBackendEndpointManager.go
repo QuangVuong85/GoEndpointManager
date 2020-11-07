@@ -10,7 +10,7 @@ import (
 	"context"
 	"sync"
 
-	etcdv3 "go.etcd.io/etcd/clientv3"
+	etcdv3 "go.etcd.io/etcd/client/v3"
 )
 
 //EtcdEnpointManager Endpoint manager for backend service using etcd
